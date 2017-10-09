@@ -86,6 +86,8 @@ class NeuralMapCell(Layer):
     def call(self, inputs, states, training=None):
         # global read operation
         # r_t = read(M_t)
+        
+
         # inputs is e_t concatenated with h_t
         e_t = inputs[:-self.units] # shape=[1xe]
         h_t = inputs[-self.units:] # shape=[1xm]
