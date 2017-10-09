@@ -89,8 +89,8 @@ class SimpleMemoryCell(Layer):
         h_t = inputs[-self.units:] # shape=[1xm]
 
         # states is M_key, M_value
-        M_key = states[:self.memory_size+1] # shape=[Mxm]
-        M_value = states[self.memory_size+1:] # shape=[Mxm]
+        M_key = states[:self.memory_size] # shape=[Mxm]
+        M_value = states[self.memory_size:] # shape=[Mxm]
 
         # calculate attention probability
         at = K.exp(K.dot(M_key, K.transpose(h_t)))

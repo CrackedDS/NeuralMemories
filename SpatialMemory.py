@@ -65,7 +65,7 @@ class NeuralMapCell(Layer):
         self.recurrent_constraint = constraints.get(recurrent_constraint)
 
         self.memory_size = memory_size
-        self.state_size = (self.units, ) * ((self.memory_size[0] * self.memory_size[1]) + 1) # Memory [h, w] + r_t
+        self.state_size = (self.units, ) * (1 + (self.memory_size[0] * self.memory_size[1])) # r_t + Memory [h, w]
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
