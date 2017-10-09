@@ -40,7 +40,7 @@ class NeuralMapCell(Layer):
             the `recurrent_kernel` weights matrix
             (see [constraints](../constraints.md)).
         memory_size: Number of observations stored in the memory.
-            Set equal to the timesteps.
+            Set equal to the [h,w].
     """
 
     def __init__(self, units,
@@ -50,7 +50,7 @@ class NeuralMapCell(Layer):
                  recurrent_regularizer=None,
                  kernel_constraint=None,
                  recurrent_constraint=None,
-                 memory_size=10,
+                 memory_size=[10,10],
                  **kwargs):
         super(NeuralMapCell, self).__init__(**kwargs)
         self.units = units
@@ -65,7 +65,7 @@ class NeuralMapCell(Layer):
         self.recurrent_constraint = constraints.get(recurrent_constraint)
 
         self.memory_size = memory_size
-        self.state_size = (self.units, ) * (self.memory_size * 2) #M_key, M_value
+        self.state_size = (self.units, ) * ((self.memory_size[0] * self.memory_size[1]) + 1) # Memory [h, w] + r_t
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
@@ -136,7 +136,7 @@ class NeuralMap(RNN):
             the `recurrent_kernel` weights matrix
             (see [constraints](../constraints.md)).
         memory_size: Number of observations stored in the memory.
-            Set equal to the timesteps.
+            Set equal to the [h,w].
     """
 
     @interfaces.legacy_recurrent_support
@@ -147,7 +147,7 @@ class NeuralMap(RNN):
                  recurrent_regularizer=None,
                  kernel_constraint=None,
                  recurrent_constraint=None,
-                 memory_size=10,
+                 memory_size=[10,10],
                  **kwargs):
         cell = NeuralMapCell(units,
                         kernel_initializer=kernel_initializer,
