@@ -69,23 +69,53 @@ class NeuralMapCell(Layer):
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
-        self.W_key = self.add_weight(shape=(input_dim - self.units, self.units),
-                                      name='W_key',
-                                      initializer=self.kernel_initializer,
-                                      regularizer=self.kernel_regularizer,
-                                      constraint=self.kernel_constraint)
-        self.W_value = self.add_weight(
-            shape=(input_dim - self.units, self.units),
-            name='W_value',
-            initializer=self.recurrent_initializer,
-            regularizer=self.recurrent_regularizer,
-            constraint=self.recurrent_constraint)
+
+        # kernels for Deep CNN for global read (r_t)
+        kernel1_shape = (3,3,self.units,32)
+        self.conv_kernel1 = self.add_weight(shape=kernel1_shape,
+                                            name='conv_kernel1',
+                                            initializer=self.kernel_initializer,
+                                            regularizer=self.kernel_regularizer,
+                                            constraint=self.kernel_constraint)
+        kernel2_shape = (3,3,32,64)
+        self.conv_kernel2 = self.add_weight(shape=kernel2_shape,
+                                            name='conv_kernel2',
+                                            initializer=self.kernel_initializer,
+                                            regularizer=self.kernel_regularizer,
+                                            constraint=self.kernel_constraint)
+        dense1_shape = ((64 * (self.memory_size[0]-2) * (self.memory_size[1]-2)), 128)
+        self.conv_dense1 = self.add_weight(shape=dense1_shape,
+                                           name='conv_dense1',
+                                           initializer=self.kernel_initializer,
+                                           regularizer=self.kernel_regularizer,
+                                           constraint=self.kernel_constraint)
+        dense2_shape = (128, self.units)
+        self.conv_dense2 = self.add_weight(shape=dense2_shape,
+                                           name='conv_dense2',
+                                           initializer=self.kernel_initializer,
+                                           regularizer=self.kernel_regularizer,
+                                           constraint=self.kernel_constraint)
 
         self.built = True
 
     def call(self, inputs, states, training=None):
+        # preprocessing states to get memory
+        memory = states[1:((self.memory_size[0] * self.memory_size[1]) + 1)]
+        memory = K.transpose(memory)
+        memory = K.reshape(memory, (self.units, self.memory_size[0], self.memory_size[1]))
+
         # global read operation
-        # r_t = read(M_t)
+        # r_t = read(M_t) ; output dimension of r_t = self.units
+        first_conv = K.conv2d(memory, self.conv_kernel1, strides=(1,1), padding='same', data_format='channels_first')
+        second_conv = K.conv2d(first_conv, self.conv_kernel2, strides=(1,1), padding='valid', data_format='channels_first')
+        pool_conv = K.pool2d(second_conv, pool_size=(2,2), strides=(1,1), padding='valid', data_format='channels_first', pool_mode='avg')
+        flatten_conv = K.batch_flatten(pool_conv)
+        dense1_conv = K.dot(flatten_conv, self.conv_dense1)
+        dense2_conv = K.dot(dense1_conv, self.conv_dense2)
+        r_t = dense2_conv
+
+        # context read operation
+        # c_t = context(M_t, s_t, r_t)
         
 
         # inputs is e_t concatenated with h_t
