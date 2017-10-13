@@ -96,6 +96,14 @@ class NeuralMapCell(Layer):
                                            regularizer=self.kernel_regularizer,
                                            constraint=self.kernel_constraint)
 
+        #kernels for context read operation (c_t)
+        ckernel_shape = ((input_dim + self.units), self.units)
+        self.context_kernel = self.add_weight(shape=ckernel_shape,
+                                              name='context_kernel',
+                                              initializer=self.kernel_initializer,
+                                              regularizer=self.kernel_regularizer,
+                                              constraint=self.kernel_constraint)
+
         self.built = True
 
     def call(self, inputs, states, training=None):
@@ -116,7 +124,18 @@ class NeuralMapCell(Layer):
 
         # context read operation
         # c_t = context(M_t, s_t, r_t)
-        
+        q_t = K.concatenate([inputs, r_t])
+        q_t = K.dot(q_t, self.context_kernel)
+        at = K.exp(K.dot(q_t, memory))
+
+        # at = K.exp(K.dot(M_key, K.transpose(h_t)))
+        # at_sum = K.sum(at, axis=1)
+        # at_sum_repeated = K.repeat(at_sum, self.memory_size)
+        # at /= at_sum_repeated # shape = [Mx1]
+        #
+        # # calculate output from attention probability
+        # output = K.dot(K.transpose(at), M_value) # shape = [1xm]
+
 
         # inputs is e_t concatenated with h_t
         e_t = inputs[:-self.units] # shape=[1xe]
