@@ -96,7 +96,7 @@ class NeuralMapCell(Layer):
                                            regularizer=self.kernel_regularizer,
                                            constraint=self.kernel_constraint)
 
-        #kernels for context read operation (c_t)
+        # kernels for context read operation (c_t)
         ckernel_shape = ((input_dim + self.units), self.units)
         self.context_kernel = self.add_weight(shape=ckernel_shape,
                                               name='context_kernel',
@@ -104,9 +104,24 @@ class NeuralMapCell(Layer):
                                               regularizer=self.kernel_regularizer,
                                               constraint=self.kernel_constraint)
 
+        # kernels for writing new vector into memory
+        wkernel_shape = (input_dim, self.units)
+        self.write_kernel = self.add_weight(shape=wkernel_shape,
+                                            name='write_kernel',
+                                            initializer=self.kernel_initializer,
+                                            regularizer=self.kernel_regularizer,
+                                            constraint=self.kernel_constraint)
+        wukernel_shape = (self.units, self.units)
+        self.write_update = self.add_weight(shape=wukernel_shape,
+                                            name='wukernel_shape',
+                                            initializer=self.kernel_initializer,
+                                            regularizer=self.kernel_regularizer,
+                                            constraint=self.kernel_constraint)
+
         self.built = True
 
-    def call(self, inputs, states, training=None):
+    # figure out how to send x, y to the fucntion
+    def call(self, inputs, x, y, states, training=None):
         # preprocessing states to get memory
         memory = states[1:((self.memory_size[0] * self.memory_size[1]) + 1)]
         memory = K.transpose(memory)
@@ -117,42 +132,31 @@ class NeuralMapCell(Layer):
         first_conv = K.conv2d(memory, self.conv_kernel1, strides=(1,1), padding='same', data_format='channels_first')
         second_conv = K.conv2d(first_conv, self.conv_kernel2, strides=(1,1), padding='valid', data_format='channels_first')
         pool_conv = K.pool2d(second_conv, pool_size=(2,2), strides=(1,1), padding='valid', data_format='channels_first', pool_mode='avg')
-        flatten_conv = K.batch_flatten(pool_conv)
+        flatten_conv = K.flatten(pool_conv)
         dense1_conv = K.dot(flatten_conv, self.conv_dense1)
         dense2_conv = K.dot(dense1_conv, self.conv_dense2)
         r_t = dense2_conv
 
         # context read operation
         # c_t = context(M_t, s_t, r_t)
-        q_t = K.concatenate([inputs, r_t])
-        q_t = K.dot(q_t, self.context_kernel)
-        at = K.exp(K.dot(q_t, memory))
+        q_t = K.concatenate([inputs, r_t]) # [1x(s+c)]
+        q_t = K.dot(q_t, self.context_kernel) # [1xc]
+        at = K.exp(K.dot(q_t, memory)) # [1xhxw]
+        at_sum = K.sum(at)
+        # at_sum_repeated = K.repeat (at_sum, (self.memory_size[0], self.memory_size[1]))
+        at /= at_sum # [1xhxw]
+        c_t = K.dot(at, memory) # [1xc]
 
-        # at = K.exp(K.dot(M_key, K.transpose(h_t)))
-        # at_sum = K.sum(at, axis=1)
-        # at_sum_repeated = K.repeat(at_sum, self.memory_size)
-        # at /= at_sum_repeated # shape = [Mx1]
-        #
-        # # calculate output from attention probability
-        # output = K.dot(K.transpose(at), M_value) # shape = [1xm]
-
-
-        # inputs is e_t concatenated with h_t
-        e_t = inputs[:-self.units] # shape=[1xe]
-        h_t = inputs[-self.units:] # shape=[1xm]
-
-        # states is M_key, M_value
-        M_key = states[:self.memory_size+1] # shape=[Mxm]
-        M_value = states[self.memory_size+1:] # shape=[Mxm]
-
-        # calculate attention probability
-        at = K.exp(K.dot(M_key, K.transpose(h_t)))
-        at_sum = K.sum(at, axis=1)
-        at_sum_repeated = K.repeat(at_sum, self.memory_size)
-        at /= at_sum_repeated # shape = [Mx1]
-
-        # calculate output from attention probability
-        output = K.dot(K.transpose(at), M_value) # shape = [1xm]
+        # Computing write value
+        # m_t+1_x,y = write(s_t, r_t, c_t, m_t_x,y)
+        s_t = K.dot(inputs, self.write_kernel) # [1xc]
+        global_imp = K.dot(s_t, K.transpose(r_t)) # [1x1]
+        local_imp = K.dot(s_t, K.transpose(c_t)) # [1x1]
+        mem_t = memory[:, x, y] # [cx1x1]
+        mem_t = K.reshape(mem_t, (1, self.units)) # [1xc]
+        mem_t += (local_imp / (local_imp + global_imp)) * K.dot((mem_t - s_t), self.write_update)
+        mem_t = K.reshape(mem_t, (self.units, 1, 1)) # [cx1x1]
+        memory[:, x, y] = mem_t
 
         # update states
         M_key.pop(0) # shape = [M-1xm]
