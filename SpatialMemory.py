@@ -159,14 +159,12 @@ class NeuralMapCell(Layer):
         memory[:, x, y] = mem_t
 
         # update states
-        M_key.pop(0) # shape = [M-1xm]
-        M_value.pop(0) # shape = [M-1xm]
-        m_key = K.dot(e_t, self.W_key) # shape = [1xm]
-        m_value = K.dot(e_t, self.W_value) # shape = [1xm]
-        M_key.append(m_key) # shape = [Mxm]
-        M_value.append(m_value) # shape = [Mxm]
+        mem_t = K.reshape(mem_t, (1, self.units))
+        new_states = states[:((self.memory_size[0] * self.memory_size[1]) + 1)]
+        new_states[0] = r_t
+        new_states[((x-1) * self.units) + y] = mem_t
 
-        return output, [M_key, M_value]
+        return c_t, new_states
 
 class NeuralMap(RNN):
     """Neural Map Implementation4.
