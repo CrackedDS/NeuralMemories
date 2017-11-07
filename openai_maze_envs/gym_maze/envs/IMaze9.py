@@ -1,4 +1,4 @@
-from gym_maze.envs import AbstractMaze
+from ...gym_maze.envs import AbstractMaze
 
 import numpy as np
 #Mapping (Indicator - Reward)

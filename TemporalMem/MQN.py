@@ -1,21 +1,17 @@
-import sys, os
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-from keras.models import load_model
-from keras.optimizers import RMSprop
-from keras.utils import plot_model
-import keras.backend as K
-
-from .rl.agents.dqn import DQNAgent
-from .rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy
-from .rl.memory import SequentialMemory, Memory
-from .rl.callbacks import TrainEpisodeLogger
+import os
+import sys
 
 import gym
-from .openai_maze_envs import gym_maze
+import keras.backend as K
+import matplotlib.pyplot as plt
+import numpy as np
+from keras.optimizers import RMSprop
+
+from ..rl.agents.dqn import DQNAgent
 from .MQNModel import MQNmodel
+from ..rl.callbacks import TrainEpisodeLogger
+from ..rl.memory import SequentialMemory
+from ..rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy
 
 
 # Need to update environment to have indicator tiles
