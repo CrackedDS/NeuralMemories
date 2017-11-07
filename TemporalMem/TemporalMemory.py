@@ -52,7 +52,7 @@ class SimpleMemoryCell(Layer):
                  recurrent_regularizer=None,
                  kernel_constraint=None,
                  recurrent_constraint=None,
-                 memory_size=10,
+                 memory_size=50,
                  **kwargs):
         super(SimpleMemoryCell, self).__init__(**kwargs)
         self.units = units
@@ -90,8 +90,8 @@ class SimpleMemoryCell(Layer):
 
         # e_t = inputs[:-self.units] # shape=[1xe]
         # h_t = inputs[-self.units:] # shape=[1xm]
-        e_t = inputs[:, :self.units]
-        h_t = inputs[:, self.units:]
+        e_t = inputs[:, :-self.units]
+        h_t = inputs[:, -self.units:]
 
         # states is M_key, M_value
 
@@ -107,8 +107,8 @@ class SimpleMemoryCell(Layer):
 
         # print M_key_tens
         # print K.transpose(h_t)
-        # calculate attention probability
         '''
+        # calculate attention probability
         at = K.exp(K.dot(M_key, K.transpose(h_t)))
         at_sum = K.sum(at, axis=1)
         at_sum_repeated = K.repeat(at_sum, self.memory_size)
@@ -137,7 +137,6 @@ class SimpleMemoryCell(Layer):
         # output = K.dot(K.transpose(at), M_value_tens)
 
         output = K.batch_dot(M_value_tens, at, axes=[1, 1])
-        print(output)
         # update states
         M_key.pop(0)  # shape = [M-1xm]
         M_value.pop(0)  # shape = [M-1xm]
@@ -192,7 +191,7 @@ class SimpleMemory(RNN):
                  recurrent_regularizer=None,
                  kernel_constraint=None,
                  recurrent_constraint=None,
-                 memory_size=10,
+                 memory_size=50,
                  **kwargs):
         cell = SimpleMemoryCell(units,
                                 kernel_initializer=kernel_initializer,
@@ -202,7 +201,7 @@ class SimpleMemory(RNN):
                                 kernel_constraint=kernel_constraint,
                                 recurrent_constraint=recurrent_constraint,
                                 memory_size=memory_size)
-        super(SimpleMemory, self).__init__(cell=cell, **kwargs)
+        super(SimpleMemory, self).__init__(cell=cell, return_sequences=True, **kwargs)
 
     def call(self, inputs, mask=None, training=None, initial_state=None):
         return super(SimpleMemory, self).call(inputs,
