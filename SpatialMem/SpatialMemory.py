@@ -105,18 +105,26 @@ class NeuralMapCell(Layer):
                                               constraint=self.kernel_constraint)
 
         # kernels for writing new vector into memory
-        wkernel_shape = (input_dim, self.units)
-        self.write_kernel = self.add_weight(shape=wkernel_shape,
-                                            name='write_kernel',
-                                            initializer=self.kernel_initializer,
-                                            regularizer=self.kernel_regularizer,
-                                            constraint=self.kernel_constraint)
-        wukernel_shape = (self.units, self.units)
-        self.write_update = self.add_weight(shape=wukernel_shape,
-                                            name='wukernel_shape',
-                                            initializer=self.kernel_initializer,
-                                            regularizer=self.kernel_regularizer,
-                                            constraint=self.kernel_constraint)
+        kernel_shape = (input_dim + self.units, self.units)
+        self.recurr_kernel = self.add_weight(shape=kernel_shape,
+                                        name='write_kernel',
+                                        initializer=self.recurrent_initializer,
+                                        regularizer=self.recurrent_regularizer,
+                                        constraint=self.recurrent_constraint)
+        self.write_kernel = self.recurr_kernel[:input_dim, :self.units]
+        self.write_update = self.recurr_kernel[input_dim:, :self.units]
+        # wkernel_shape = (input_dim, self.units)
+        # self.write_kernel = self.add_weight(shape=wkernel_shape,
+        #                                     name='write_kernel',
+        #                                     initializer=self.recurrent_initializer,
+        #                                     regularizer=self.recurrent_regularizer,
+        #                                     constraint=self.recurrent_constraint)
+        # wukernel_shape = (self.units, self.units)
+        # self.write_update = self.add_weight(shape=wukernel_shape,
+        #                                     name='wukernel_shape',
+        #                                     initializer=self.kernel_initializer,
+        #                                     regularizer=self.kernel_regularizer,
+        #                                     constraint=self.kernel_constraint)
 
         self.built = True
 
@@ -210,7 +218,7 @@ class NeuralMap(RNN):
                         kernel_constraint=kernel_constraint,
                         recurrent_constraint=recurrent_constraint,
                         memory_size=memory_size)
-        super(NeuralMap, self).__init__(cell, **kwargs)
+        super(NeuralMap, self).__init__(cell, return_sequences=True, **kwargs)
 
     def call(self, inputs, mask=None, training=None, initial_state=None):
         return super(NeuralMap, self).call(inputs,
